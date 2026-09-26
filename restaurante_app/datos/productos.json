@@ -1,0 +1,14 @@
+[
+  {
+    "id": "P001",
+    "nombre": "Hamburguesa Doble",
+    "precio": 8.50,
+    "categoria": "Plato Fuerte"
+  },
+  {
+    "id": "P002",
+    "nombre": "Gaseosa 500ml",
+    "precio": 1.50,
+    "categoria": "Bebida"
+  }
+]
