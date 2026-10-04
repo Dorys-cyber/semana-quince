@@ -20,9 +20,48 @@ class MainView(tk.Tk):
         self.geometry("950x600")
         self.configure(bg="#f8fafc")
 
+        # Cargar los iconos antes de crear la interfaz
+        self._cargar_iconos_sidebar()
+
         self._configurar_estilos()
         self._crear_interfaz()
         self.mostrar_seccion("inicio")
+
+    def _cargar_iconos_sidebar(self):
+        """Carga y redimensiona los iconos para la barra lateral y botones desde assets/icons."""
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        raiz_proyecto = os.path.dirname(base_dir)
+        ruta_icons = os.path.join(raiz_proyecto, 'assets', 'icons') 
+
+        def cargar(nombre):
+            ruta = os.path.join(ruta_icons, nombre)
+            if os.path.exists(ruta):
+                try:
+                    if EXIS_PIL:
+                        img = Image.open(ruta)
+                        img = img.resize((18, 18), Image.Resampling.LANCZOS)
+                        return ImageTk.PhotoImage(img)
+                    else:
+                        return tk.PhotoImage(file=ruta)
+                except Exception as e:
+                    print(f"Error cargando icono {nombre}: {e}")
+            else:
+                print(f"No se encontró el archivo: {ruta}")
+            return None
+
+        # Iconos del menú lateral
+        self.icon_home = cargar("home.png")
+        self.icon_users = cargar("users.png")
+        self.icon_products = cargar("products.png")
+        self.icon_sales = cargar("sales.png")
+        self.icon_logout = cargar("logout.png")
+
+        # Iconos para los botones de acción
+        self.icon_add = cargar("add.png")        # Registrar (+)
+        self.icon_search = cargar("search.png")   # Cargar por código (lupa)
+        self.icon_edit = cargar("edit.png")      # Actualizar (lápiz)
+        self.icon_delete = cargar("delete.png")  # Eliminar (basurero)
+        self.icon_clear = cargar("clean.png")    # Limpiar (escoba)
 
     def _configurar_estilos(self):
         style = ttk.Style()
@@ -48,18 +87,18 @@ class MainView(tk.Tk):
         tk.Label(self.sidebar, text=f"Sesión: {self.usuario_actual.rol}", font=("Arial", 10), fg="#94a3b8", bg="#1e293b").pack(anchor="w", padx=20, pady=(0, 20))
 
         # Botones de navegación
-        self.btn_inicio = self._crear_boton_sidebar(" Inicio", lambda: self.mostrar_seccion("inicio"))
-        self.btn_usuarios = self._crear_boton_sidebar(" Usuarios", lambda: self.mostrar_seccion("usuarios"))
-        self.btn_productos = self._crear_boton_sidebar(" Productos", lambda: self.mostrar_seccion("productos"))
-        self.btn_ventas = self._crear_boton_sidebar(" Ventas", lambda: self.mostrar_seccion("ventas"))
+        self.btn_inicio = self._crear_boton_sidebar(" Inicio", self.icon_home, lambda: self.mostrar_seccion("inicio"))
+        self.btn_usuarios = self._crear_boton_sidebar(" Usuarios", self.icon_users, lambda: self.mostrar_seccion("usuarios"))
+        self.btn_productos = self._crear_boton_sidebar(" Productos", self.icon_products, lambda: self.mostrar_seccion("productos"))
+        self.btn_ventas = self._crear_boton_sidebar(" Ventas", self.icon_sales, lambda: self.mostrar_seccion("ventas"))
 
         # Botón Cerrar sesión
         btn_logout = tk.Button(
-            self.sidebar, text=" Cerrar sesión", font=("Arial", 10, "bold"),
-            fg="white", bg="#f43f5e", activebackground="#e11d48", activeforeground="white",
-            bd=0, anchor="w", padx=20, cursor="hand2", command=self._callback_logout
+            self.sidebar, text=" Cerrar sesión", image=self.icon_logout, compound="left",
+            font=("Arial", 10, "bold"), fg="white", bg="#f43f5e", activebackground="#e11d48", 
+            activeforeground="white", bd=0, anchor="w", padx=15, cursor="hand2", command=self._callback_logout
         )
-        btn_logout.pack(side="bottom", fill="x", ipady=10, padx=15, pady=20)
+        btn_logout.pack(side="bottom", fill="x", ipady=8, padx=15, pady=20)
 
         # 3. Área de Contenido Principal
         self.content_area = tk.Frame(self, bg="#f8fafc")
@@ -70,13 +109,14 @@ class MainView(tk.Tk):
         if self.on_logout:
             self.on_logout()
 
-    def _crear_boton_sidebar(self, texto, comando):
+    def _crear_boton_sidebar(self, texto, icono, comando):
         btn = tk.Button(
-            self.sidebar, text=texto, font=("Arial", 11),
-            fg="#e2e8f0", bg="#1e293b", activebackground="#2563eb", activeforeground="white",
-            bd=0, anchor="w", padx=20, cursor="hand2", command=comando
+            self.sidebar, text=texto, image=icono, compound="left",
+            font=("Arial", 11), fg="#e2e8f0", bg="#1e293b", 
+            activebackground="#2563eb", activeforeground="white",
+            bd=0, anchor="w", padx=15, cursor="hand2", command=comando
         )
-        btn.pack(fill="x", ipady=10, pady=2)
+        btn.pack(fill="x", ipady=8, pady=2)
         return btn
 
     def mostrar_seccion(self, seccion):
@@ -96,6 +136,11 @@ class MainView(tk.Tk):
             self.btn_inicio.configure(bg="#2563eb", fg="white")
             self._render_inicio(u_cnt, p_cnt, v_cnt)
         elif seccion == "usuarios":
+            # REQUISITO SEMANA 16: Control de acceso exclusivo para Administrador
+            if self.usuario_actual.rol != "Administrador":
+                messagebox.showerror("Acceso denegado", "Solo el Administrador puede acceder a la gestión de usuarios.")
+                self.mostrar_seccion("inicio")
+                return
             self.btn_usuarios.configure(bg="#2563eb", fg="white")
             self._render_usuarios()
         elif seccion == "productos":
@@ -127,35 +172,188 @@ class MainView(tk.Tk):
         tk.Label(card, text=titulo, font=("Arial", 10, "bold"), fg="#334155", bg="white").pack(anchor="w", padx=20, pady=(15, 5))
         tk.Label(card, text=valor, font=("Arial", 28, "bold"), fg="#2563eb", bg="white").pack(anchor="w", padx=20, pady=(0, 15))
 
+    # ==================== SECCIÓN USUARIOS ====================
     def _render_usuarios(self):
-        tk.Label(self.content_area, text="Usuarios registrados", font=("Arial", 18, "bold"), fg="#0f172a", bg="#f8fafc").pack(anchor="w", padx=30, pady=(15, 5))
-        
-        frame_tabla = tk.LabelFrame(self.content_area, text=" Consulta de usuarios ", font=("Arial", 10, "bold"), bg="white", fg="#1e293b", padx=15, pady=15)
-        frame_tabla.pack(fill="both", expand=True, padx=30, pady=10)
+        tk.Label(self.content_area, text="Gestión de usuarios", font=("Arial", 18, "bold"), fg="#0f172a", bg="#f8fafc").pack(anchor="w", padx=30, pady=(15, 5))
 
-        container_tree = tk.Frame(frame_tabla, bg="white")
+        main_container = tk.Frame(self.content_area, bg="#f8fafc")
+        main_container.pack(fill="both", expand=True, padx=30, pady=10)
+
+        left_frame = tk.Frame(main_container, bg="#f8fafc")
+        left_frame.pack(side="left", fill="y", padx=(0, 15))
+
+        form_frame = tk.LabelFrame(left_frame, text=" Datos del usuario ", font=("Arial", 10, "bold"), bg="white", fg="#1e293b", padx=15, pady=15)
+        form_frame.pack(fill="x", pady=(0, 15))
+
+        tk.Label(form_frame, text="Identificador", font=("Arial", 9), bg="white", fg="#475569").grid(row=0, column=0, sticky="w", pady=4)
+        self.txt_user_id = tk.Entry(form_frame, font=("Arial", 10), bd=1, relief="solid", width=22)
+        self.txt_user_id.grid(row=0, column=1, pady=4, padx=(10, 0))
+
+        tk.Label(form_frame, text="Nombre", font=("Arial", 9), bg="white", fg="#475569").grid(row=1, column=0, sticky="w", pady=4)
+        self.txt_user_nombre = tk.Entry(form_frame, font=("Arial", 10), bd=1, relief="solid", width=22)
+        self.txt_user_nombre.grid(row=1, column=1, pady=4, padx=(10, 0))
+
+        tk.Label(form_frame, text="Usuario", font=("Arial", 9), bg="white", fg="#475569").grid(row=2, column=0, sticky="w", pady=4)
+        self.txt_user_username = tk.Entry(form_frame, font=("Arial", 10), bd=1, relief="solid", width=22)
+        self.txt_user_username.grid(row=2, column=1, pady=4, padx=(10, 0))
+
+        tk.Label(form_frame, text="Contrasena", font=("Arial", 9), bg="white", fg="#475569").grid(row=3, column=0, sticky="w", pady=4)
+        self.txt_user_password = tk.Entry(form_frame, font=("Arial", 10), bd=1, relief="solid", width=22, show="*")
+        self.txt_user_password.grid(row=3, column=1, pady=4, padx=(10, 0))
+
+        tk.Label(form_frame, text="Rol", font=("Arial", 9), bg="white", fg="#475569").grid(row=4, column=0, sticky="w", pady=4)
+        self.cbo_user_rol = ttk.Combobox(form_frame, values=["Administrador", "Mesero", "Cliente"], state="readonly", width=20)
+        self.cbo_user_rol.grid(row=4, column=1, pady=4, padx=(10, 0))
+        self.cbo_user_rol.set("Cliente")
+
+        # Botones de usuarios conectados a sus acciones
+        tk.Button(left_frame, text=" Registrar", image=self.icon_add, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", activebackground="#1d4ed8", bd=0, cursor="hand2", anchor="w", padx=12, command=self._registrar_usuario_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Actualizar", image=self.icon_edit, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", activebackground="#1d4ed8", bd=0, cursor="hand2", anchor="w", padx=12, command=self._actualizar_usuario_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Eliminar", image=self.icon_delete, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#f43f5e", activebackground="#e11d48", bd=0, cursor="hand2", anchor="w", padx=12, command=self._eliminar_usuario_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Limpiar", image=self.icon_clear, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#1e293b", activebackground="#334155", bd=0, cursor="hand2", anchor="w", padx=12, command=self._limpiar_usuario_accion).pack(fill="x", ipady=5, pady=3)
+
+        right_frame = tk.LabelFrame(main_container, text=" Usuarios registrados ", font=("Arial", 10, "bold"), bg="white", fg="#1e293b", padx=10, pady=10)
+        right_frame.pack(side="right", fill="both", expand=True)
+
+        container_tree = tk.Frame(right_frame, bg="white")
         container_tree.pack(fill="both", expand=True)
 
-        tree = ttk.Treeview(container_tree, columns=("ID", "Nombre", "Username", "Rol"), show="headings")
-        tree.heading("ID", text="Identificador")
-        tree.heading("Nombre", text="Nombre")
-        tree.heading("Username", text="Usuario")
-        tree.heading("Rol", text="Rol")
+        self.tree_usuarios = ttk.Treeview(container_tree, columns=("ID", "Nombre", "Username", "Rol"), show="headings")
+        self.tree_usuarios.heading("ID", text="Identificador")
+        self.tree_usuarios.heading("Nombre", text="Nombre")
+        self.tree_usuarios.heading("Username", text="Usuario")
+        self.tree_usuarios.heading("Rol", text="Rol")
 
-        tree.column("ID", width=120, anchor="center")
-        tree.column("Nombre", width=180, anchor="w")
-        tree.column("Username", width=150, anchor="w")
-        tree.column("Rol", width=120, anchor="w")
+        self.tree_usuarios.column("ID", width=100, anchor="center")
+        self.tree_usuarios.column("Nombre", width=140, anchor="w")
+        self.tree_usuarios.column("Username", width=110, anchor="w")
+        self.tree_usuarios.column("Rol", width=100, anchor="w")
 
-        scrollbar = ttk.Scrollbar(container_tree, orient="vertical", command=tree.yview)
-        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar = ttk.Scrollbar(container_tree, orient="vertical", command=self.tree_usuarios.yview)
+        self.tree_usuarios.configure(yscrollcommand=scrollbar.set)
 
-        tree.pack(side="left", fill="both", expand=True)
+        self.tree_usuarios.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+        
+        # ==========================================================
+        # REQUISITOS DE EVENTOS - SEMANA 16 (Añadidos correctamente)
+        # ==========================================================
+        self.tree_usuarios.bind("<<TreeviewSelect>>", self._cargar_usuario_seleccionado)
+        self.cbo_user_rol.bind("<<ComboboxSelected>>", self._callback_combobox_rol)
+        
+        # Atajos de teclado <Return> en los campos del formulario
+        self.txt_user_id.bind("<Return>", self._callback_tecla_return)
+        self.txt_user_nombre.bind("<Return>", self._callback_tecla_return)
+        self.txt_user_username.bind("<Return>", self._callback_tecla_return)
+        self.txt_user_password.bind("<Return>", self._callback_tecla_return)
+        
+        # Atajo global <Escape> para limpiar formulario y selecciones
+        self.bind("<Escape>", self._callback_tecla_escape)
 
+        self._cargar_tabla_usuarios()
+
+    def _cargar_tabla_usuarios(self):
+        for item in self.tree_usuarios.get_children():
+            self.tree_usuarios.delete(item)
         for u in self.servicio.obtener_usuarios():
-            tree.insert("", "end", values=(u.id, u.nombre, u.username, u.rol))
+            self.tree_usuarios.insert("", "end", values=(u.id, u.nombre, u.username, u.rol))
 
+    def _limpiar_usuario_accion(self):
+        self.txt_user_id.delete(0, tk.END)
+        self.txt_user_nombre.delete(0, tk.END)
+        self.txt_user_username.delete(0, tk.END)
+        self.txt_user_password.delete(0, tk.END)
+        self.cbo_user_rol.set("Cliente")
+
+    def _cargar_usuario_seleccionado(self, event):
+        seleccion = self.tree_usuarios.selection()
+        if seleccion:
+            item = self.tree_usuarios.item(seleccion)
+            valores = item['values']
+            if valores:
+                self.txt_user_id.delete(0, tk.END)
+                self.txt_user_id.insert(0, valores[0])
+                self.txt_user_nombre.delete(0, tk.END)
+                self.txt_user_nombre.insert(0, valores[1])
+                self.txt_user_username.delete(0, tk.END)
+                self.txt_user_username.insert(0, valores[2])
+                self.cbo_user_rol.set(valores[3])
+
+    # ==========================================================
+    # NUEVOS CALLBACKS DE EVENTOS - SEMANA 16
+    # ==========================================================
+    def _callback_combobox_rol(self, event):
+        rol_seleccionado = self.cbo_user_rol.get()
+        self.status_bar.config(text=f"Rol seleccionado (<<ComboboxSelected>>): {rol_seleccionado}")
+
+    def _callback_tecla_return(self, event):
+        self._registrar_usuario_accion()
+
+    def _callback_tecla_escape(self, event):
+        self._limpiar_usuario_accion()
+        if self.tree_usuarios.selection():
+            self.tree_usuarios.selection_remove(self.tree_usuarios.selection())
+        self.status_bar.config(text="Formulario limpiado y selección cancelada con <Escape>.")
+
+    def _registrar_usuario_accion(self):
+        uid = self.txt_user_id.get().strip()
+        nombre = self.txt_user_nombre.get().strip()
+        username = self.txt_user_username.get().strip()
+        password = self.txt_user_password.get().strip()
+        rol = self.cbo_user_rol.get()
+
+        if not uid or not nombre or not username or not password:
+            messagebox.showwarning("Campos vacíos", "Por favor complete todos los campos del usuario.")
+            return
+
+        exito, mensaje = self.servicio.registrar_usuario(uid, nombre, username, password, rol)
+        if exito:
+            messagebox.showinfo("Éxito", mensaje)
+            self._cargar_tabla_usuarios()
+            self._limpiar_usuario_accion()
+        else:
+            messagebox.showerror("Error", mensaje)
+
+    def _actualizar_usuario_accion(self):
+        uid = self.txt_user_id.get().strip()
+        nombre = self.txt_user_nombre.get().strip()
+        username = self.txt_user_username.get().strip()
+        password = self.txt_user_password.get().strip()
+        rol = self.cbo_user_rol.get()
+
+        if not uid:
+            messagebox.showwarning("Atención", "Ingrese o seleccione el identificador del usuario a actualizar.")
+            return
+
+        exito, mensaje = self.servicio.actualizar_usuario(uid, nombre, username, password, rol)
+        if exito:
+            messagebox.showinfo("Éxito", mensaje)
+            self._cargar_tabla_usuarios()
+            self._limpiar_usuario_accion()
+        else:
+            messagebox.showerror("Error", mensaje)
+
+    def _eliminar_usuario_accion(self):
+        uid = self.txt_user_id.get().strip()
+        if not uid:
+            messagebox.showwarning("Atención", "Seleccione o ingrese el ID del usuario a eliminar.")
+            return
+
+        # REQUISITO DE SEGURIDAD: Evitar eliminar la cuenta de administrador activa actual
+        if self.usuario_actual.id == uid or self.usuario_actual.username == uid:
+            messagebox.showerror("Seguridad", "No se puede eliminar la cuenta de administrador actualmente en sesión.")
+            return
+
+        if messagebox.askyesno("Confirmar", f"¿Está seguro de eliminar al usuario {uid}?"):
+            exito, mensaje = self.servicio.eliminar_usuario(uid)
+            if exito:
+                messagebox.showinfo("Éxito", mensaje)
+                self._cargar_tabla_usuarios()
+                self._limpiar_usuario_accion()
+            else:
+                messagebox.showerror("Error", mensaje)
+
+    # ==================== SECCIÓN PRODUCTOS ====================
     def _render_productos(self):
         tk.Label(self.content_area, text="Gestión de Productos", font=("Arial", 18, "bold"), fg="#0f172a", bg="#f8fafc").pack(anchor="w", padx=30, pady=(15, 5))
 
@@ -184,32 +382,12 @@ class MainView(tk.Tk):
         self.txt_prod_cat = tk.Entry(form_frame, font=("Arial", 10), bd=1, relief="solid", width=22)
         self.txt_prod_cat.grid(row=3, column=1, pady=4, padx=(10, 0))
 
-        def cargar_icono(nombre):
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            ruta = os.path.join(base_dir, "..", "assets", "icons", nombre)
-            if os.path.exists(ruta):
-                try:
-                    if EXIS_PIL:
-                        img = Image.open(ruta)
-                        img = img.resize((18, 18), Image.Resampling.LANCZOS)
-                        return ImageTk.PhotoImage(img)
-                    else:
-                        return tk.PhotoImage(file=ruta)
-                except Exception as e:
-                    print(f"Error cargando {nombre}: {e}")
-            return None
-
-        self.img_add = cargar_icono("add.png")
-        self.img_search = cargar_icono("search.png")
-        self.img_edit = cargar_icono("edit.png")
-        self.img_delete = cargar_icono("delete.png")
-        self.img_clean = cargar_icono("clean.png")
-
-        tk.Button(left_frame, text="   Registrar", image=self.img_add, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", bd=0, cursor="hand2", anchor="w", padx=15).pack(fill="x", ipady=7, pady=3)
-        tk.Button(left_frame, text="   Cargar por código", image=self.img_search, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#1e293b", bd=0, cursor="hand2", anchor="w", padx=15).pack(fill="x", ipady=7, pady=3)
-        tk.Button(left_frame, text="   Actualizar", image=self.img_edit, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", bd=0, cursor="hand2", anchor="w", padx=15).pack(fill="x", ipady=7, pady=3)
-        tk.Button(left_frame, text="   Eliminar", image=self.img_delete, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#f43f5e", bd=0, cursor="hand2", anchor="w", padx=15).pack(fill="x", ipady=7, pady=3)
-        tk.Button(left_frame, text="   Limpiar", image=self.img_clean, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#1e293b", bd=0, cursor="hand2", anchor="w", padx=15).pack(fill="x", ipady=7, pady=3)
+        # Botones de productos conectados a sus acciones
+        tk.Button(left_frame, text=" Registrar", image=self.icon_add, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", activebackground="#1d4ed8", bd=0, cursor="hand2", anchor="w", padx=12, command=self._registrar_producto_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Cargar por código", image=self.icon_search, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#1e293b", bd=0, cursor="hand2", anchor="w", padx=12, command=self._cargar_producto_por_id).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Actualizar", image=self.icon_edit, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#2563eb", activebackground="#1d4ed8", bd=0, cursor="hand2", anchor="w", padx=12, command=self._actualizar_producto_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Eliminar", image=self.icon_delete, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#f43f5e", activebackground="#e11d48", bd=0, cursor="hand2", anchor="w", padx=12, command=self._eliminar_producto_accion).pack(fill="x", ipady=5, pady=3)
+        tk.Button(left_frame, text=" Limpiar", image=self.icon_clear, compound="left", font=("Arial", 10, "bold"), fg="white", bg="#1e293b", activebackground="#334155", bd=0, cursor="hand2", anchor="w", padx=12, command=self._limpiar_producto_accion).pack(fill="x", ipady=5, pady=3)
 
         right_frame = tk.LabelFrame(main_container, text=" Productos registrados ", font=("Arial", 10, "bold"), bg="white", fg="#1e293b", padx=10, pady=10)
         right_frame.pack(side="right", fill="both", expand=True)
@@ -217,26 +395,134 @@ class MainView(tk.Tk):
         container_tree = tk.Frame(right_frame, bg="white")
         container_tree.pack(fill="both", expand=True)
 
-        tree = ttk.Treeview(container_tree, columns=("ID", "Nombre", "Precio", "Categoría"), show="headings")
-        tree.heading("ID", text="Código")
-        tree.heading("Nombre", text="Nombre")
-        tree.heading("Precio", text="Precio")
-        tree.heading("Categoría", text="Categoría")
+        self.tree_productos = ttk.Treeview(container_tree, columns=("ID", "Nombre", "Precio", "Categoría"), show="headings")
+        self.tree_productos.heading("ID", text="Código")
+        self.tree_productos.heading("Nombre", text="Nombre")
+        self.tree_productos.heading("Precio", text="Precio")
+        self.tree_productos.heading("Categoría", text="Categoría")
         
-        tree.column("ID", width=80, anchor="center")
-        tree.column("Nombre", width=160, anchor="w")
-        tree.column("Precio", width=80, anchor="center")
-        tree.column("Categoría", width=100, anchor="center")
+        self.tree_productos.column("ID", width=80, anchor="center")
+        self.tree_productos.column("Nombre", width=160, anchor="w")
+        self.tree_productos.column("Precio", width=80, anchor="center")
+        self.tree_productos.column("Categoría", width=100, anchor="center")
         
-        scrollbar = ttk.Scrollbar(container_tree, orient="vertical", command=tree.yview)
-        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar = ttk.Scrollbar(container_tree, orient="vertical", command=self.tree_productos.yview)
+        self.tree_productos.configure(yscrollcommand=scrollbar.set)
 
-        tree.pack(side="left", fill="both", expand=True)
+        self.tree_productos.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+        
+        self.tree_productos.bind("<<TreeviewSelect>>", self._cargar_producto_seleccionado)
+        self._cargar_tabla_productos()
 
+    def _cargar_tabla_productos(self):
+        for item in self.tree_productos.get_children():
+            self.tree_productos.delete(item)
         for p in self.servicio.obtener_productos():
-            tree.insert("", "end", values=(p.id, p.nombre, f"${p.precio:.2f}", p.categoria))
+            self.tree_productos.insert("", "end", values=(p.id, p.nombre, f"${p.precio:.2f}", p.categoria))
 
+    def _limpiar_producto_accion(self):
+        self.txt_prod_id.delete(0, tk.END)
+        self.txt_prod_nombre.delete(0, tk.END)
+        self.txt_prod_precio.delete(0, tk.END)
+        self.txt_prod_cat.delete(0, tk.END)
+
+    def _cargar_producto_seleccionado(self, event):
+        seleccion = self.tree_productos.selection()
+        if seleccion:
+            item = self.tree_productos.item(seleccion)
+            valores = item['values']
+            if valores:
+                self.txt_prod_id.delete(0, tk.END)
+                self.txt_prod_id.insert(0, valores[0])
+                self.txt_prod_nombre.delete(0, tk.END)
+                self.txt_prod_nombre.insert(0, valores[1])
+                precio_limpio = str(valores[2]).replace("$", "").strip()
+                self.txt_prod_precio.delete(0, tk.END)
+                self.txt_prod_precio.insert(0, precio_limpio)
+                self.txt_prod_cat.delete(0, tk.END)
+                self.txt_prod_cat.insert(0, valores[3])
+
+    def _cargar_producto_por_id(self):
+        pid = self.txt_prod_id.get().strip()
+        if not pid:
+            messagebox.showwarning("Atención", "Ingrese el código del producto a buscar.")
+            return
+        producto = self.servicio.buscar_producto_por_id(pid)
+        if producto:
+            self.txt_prod_nombre.delete(0, tk.END)
+            self.txt_prod_nombre.insert(0, producto.nombre)
+            self.txt_prod_precio.delete(0, tk.END)
+            self.txt_prod_precio.insert(0, str(producto.precio))
+            self.txt_prod_cat.delete(0, tk.END)
+            self.txt_prod_cat.insert(0, producto.categoria)
+        else:
+            messagebox.showerror("No encontrado", f"No existe un producto con el código {pid}.")
+
+    def _registrar_producto_accion(self):
+        pid = self.txt_prod_id.get().strip()
+        nombre = self.txt_prod_nombre.get().strip()
+        precio_str = self.txt_prod_precio.get().strip()
+        categoria = self.txt_prod_cat.get().strip()
+
+        if not pid or not nombre or not precio_str or not categoria:
+            messagebox.showwarning("Campos vacíos", "Complete todos los campos del producto.")
+            return
+
+        try:
+            precio = float(precio_str)
+        except ValueError:
+            messagebox.showerror("Error", "El precio debe ser un número válido.")
+            return
+
+        exito, mensaje = self.servicio.registrar_producto(pid, nombre, precio, categoria)
+        if exito:
+            messagebox.showinfo("Éxito", mensaje)
+            self._cargar_tabla_productos()
+            self._limpiar_producto_accion()
+        else:
+            messagebox.showerror("Error", mensaje)
+
+    def _actualizar_producto_accion(self):
+        pid = self.txt_prod_id.get().strip()
+        nombre = self.txt_prod_nombre.get().strip()
+        precio_str = self.txt_prod_precio.get().strip()
+        categoria = self.txt_prod_cat.get().strip()
+
+        if not pid:
+            messagebox.showwarning("Atención", "Ingrese o seleccione el código del producto a actualizar.")
+            return
+
+        try:
+            precio = float(precio_str)
+        except ValueError:
+            messagebox.showerror("Error", "El precio debe ser un número válido.")
+            return
+
+        exito, mensaje = self.servicio.actualizar_producto(pid, nombre, precio, categoria)
+        if exito:
+            messagebox.showinfo("Éxito", mensaje)
+            self._cargar_tabla_productos()
+            self._limpiar_producto_accion()
+        else:
+            messagebox.showerror("Error", mensaje)
+
+    def _eliminar_producto_accion(self):
+        pid = self.txt_prod_id.get().strip()
+        if not pid:
+            messagebox.showwarning("Atención", "Seleccione o ingrese el código del producto a eliminar.")
+            return
+
+        if messagebox.askyesno("Confirmar", f"¿Está seguro de eliminar el producto {pid}?"):
+            exito, mensaje = self.servicio.eliminar_producto(pid)
+            if exito:
+                messagebox.showinfo("Éxito", mensaje)
+                self._cargar_tabla_productos()
+                self._limpiar_producto_accion()
+            else:
+                messagebox.showerror("Error", mensaje)
+
+    # ==================== SECCIÓN VENTAS ====================
     def _render_ventas(self):
         tk.Label(self.content_area, text="Ventas", font=("Arial", 18, "bold"), fg="#0f172a", bg="#f8fafc").pack(anchor="w", padx=30, pady=(15, 5))
 

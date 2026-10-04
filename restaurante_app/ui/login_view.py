@@ -9,7 +9,7 @@ class LoginView(tk.Tk):
         self.servicio = servicio
         self.on_login_success = on_login_success
 
-        self.title("Restaurante TorVar - Tkinter")
+        self.title("Restaurante - Tkinter")
         self.geometry("700x580")
         self.configure(bg="#f1f5f9")
         self.resizable(False, False)

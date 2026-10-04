@@ -2,13 +2,25 @@
   {
     "id": "P001",
     "nombre": "Hamburguesa Doble",
-    "precio": 8.50,
+    "precio": 8.5,
     "categoria": "Plato Fuerte"
   },
   {
     "id": "P002",
     "nombre": "Gaseosa 500ml",
-    "precio": 1.50,
+    "precio": 1.5,
     "categoria": "Bebida"
+  },
+  {
+    "id": "P003",
+    "nombre": "Jugo mora",
+    "precio": 2.0,
+    "categoria": "Bebida"
+  },
+  {
+    "id": "P004",
+    "nombre": "Hamburguesa Simple",
+    "precio": 4.5,
+    "categoria": "Plato Fuerte"
   }
 ]

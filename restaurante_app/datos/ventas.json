@@ -5,5 +5,12 @@
     "producto_id": "P001",
     "fecha": "2026-09-25 16:22:42",
     "total": 8.5
+  },
+  {
+    "id": "V002",
+    "usuario_id": "U002",
+    "producto_id": "P002",
+    "fecha": "2026-10-03 02:27:51",
+    "total": 1.5
   }
 ]

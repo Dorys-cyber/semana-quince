@@ -12,5 +12,12 @@
     "username": "mesero1",
     "password": "123",
     "rol": "Mesero"
+  },
+  {
+    "id": "U003",
+    "nombre": "Luis Torres",
+    "username": "mesero2",
+    "password": "123456",
+    "rol": "Mesero"
   }
 ]
